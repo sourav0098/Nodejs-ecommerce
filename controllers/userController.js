@@ -99,9 +99,9 @@ const handleRefreshToken = async (req, res) => {
 // logout user
 const logout = asyncHandler(async (req, res) => {
   // Clear the refresh token cookie
-  res.clearCookie("refreshToken",{
+  res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: true
+    secure: true,
   });
 
   res.status(200).json({ message: "Logout successful" });
@@ -115,9 +115,9 @@ const getAllUsers = asyncHandler(async (req, res) => {
   const sortDir = req.query.sortDir || "asc";
 
   try {
-    const totalUsers = await User.countDocuments(); // Get the total number of users
+    const totalElements = await User.countDocuments(); // Get the total number of users
 
-    const totalPages = Math.ceil(totalUsers / pageSize); // Calculate the total number of pages
+    const totalPages = Math.ceil(totalElements / pageSize); // Calculate the total number of pages
     const lastPage = Math.max(totalPages, 1); // Determine the last page (minimum of 1)
 
     const users = await User.find()
@@ -131,7 +131,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
       pageSize,
       totalPages,
       lastPage,
-      totalUsers,
+      totalElements,
     });
   } catch (error) {
     throw new Error(error);
