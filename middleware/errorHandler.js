@@ -5,14 +5,19 @@ const notFound = (req, res, next) => {
   next(error); // Pass the error to the next middleware
 };
 
-// Error handler middleware
 const errorHandler = (err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode; // If the response status code is 200 (OK), set the status code to 500 (Internal Server Error), otherwise use the existing status code
-  res.status(statusCode); // Set the HTTP status code to the determined status code
-  res.json({
-    message: err?.message,
-    stack: err?.stack,
-  });
+  const statusCode = 500; // Use a default status code for errors
+
+  if (process.env.NODE_ENV === "development") {
+    // Provide more detailed error information in development mode
+    res.json({
+      message: err.message,
+      stack: err.stack,
+    });
+  } else {
+    // In production mode, provide only error message without exposing sensitive information
+    res.json({ message: err.message });
+  }
 };
 
 module.exports = { notFound, errorHandler };

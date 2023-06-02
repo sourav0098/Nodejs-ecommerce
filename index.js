@@ -13,7 +13,7 @@ dbConnect();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false })); // parse application/x-www-form-urlencoded
 
-app.use("/api/user", authRouter);
+app.use("/api", authRouter);
 
 app.use(notFound);
 app.use(errorHandler);
