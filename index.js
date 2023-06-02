@@ -6,12 +6,14 @@ const PORT = process.env.PORT || 8000;
 const authRouter = require("./routes/authRoute");
 const bodyParser = require("body-parser");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
+const cookieParser = require("cookie-parser");
 
 // connect to database
 dbConnect();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false })); // parse application/x-www-form-urlencoded
+app.use(cookieParser());
 
 app.use("/api", authRouter);
 
