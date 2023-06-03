@@ -4,6 +4,9 @@ const asyncHandler = require("express-async-handler");
 const validateId = require("../utils/validateId");
 const generateRefreshToken = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
+const sendEmail = require("./emailController");
+const crypto = require("crypto");
+require("dotenv").config();
 
 // Register a new user
 const createUser = asyncHandler(async (req, res) => {
@@ -95,6 +98,87 @@ const handleRefreshToken = async (req, res) => {
       .json({ errors: ["Invalid or expired refresh token"] });
   }
 };
+
+// Update Password
+const updatePassword = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { oldPassword, newPassword } = req.body;
+  validateId(_id);
+
+  try {
+    const user = await User.findById(_id);
+
+    if (!oldPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: "Old password and new password are required" });
+    } else {
+      // Compare the oldPassword with the stored password
+      const isPasswordValid = await user.isPasswordMatched(oldPassword);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Incorrect old password" });
+      } else {
+        user.password = newPassword;
+        user.passwordChangedAt = Date.now();
+        await user.save();
+        res.status(200).json({ message: "Password updated successfully" });
+      }
+    }
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+// Forgot Password
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ message: "No user found for this email" });
+  } else {
+    try {
+      const token = await user.createPasswordResetToken();
+      // to save token, expiry date in db
+      await user.save();
+      const resetURL = `Please follow the link to reset your password. This link is valid for 10 minutes.<a href="http://localhost:${process.env.PORT}/api/user/reset-password/${token}">Click here</a>`;
+      const data = {
+        to: email,
+        subject: "Reset Password",
+        text: `Hey, ${user.fname}`,
+        htm: resetURL,
+      };
+      sendEmail(data);
+      res.status(200).json({ message: "Reset link sent to your email" });
+    } catch (error) {
+      throw new Error(error);
+    }
+  }
+});
+
+// Reset Password
+const resetPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const { token } = req.params;
+
+  // Hash the token so we can match it with the hashed token in the database
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  // Find user based on passwordResetToken and passwordResetExpires
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gte: Date.now() },
+  });
+  if (!user) {
+    throw new Error("Token is invalid or has expired please try again");
+  }
+  // Set the new password
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  user.passwordChangedAt = Date.now();
+  await user.save();
+  return res.status(200).json({ message: "Password reset successful" });
+});
 
 // logout user
 const logout = asyncHandler(async (req, res) => {
@@ -234,6 +318,9 @@ module.exports = {
   createUser,
   loginUser,
   handleRefreshToken,
+  updatePassword,
+  forgotPassword,
+  resetPassword,
   logout,
   getAllUsers,
   getUserById,
